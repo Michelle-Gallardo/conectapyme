@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ConectaPyme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Plano a la izquierda (la herramienta), panel de cálculo a la derecha; resultados arriba */
+  --ink:#0B3C49;
+  --accent:#0E7C86;
+  --paper:#F3F7F8;
+  --surface:#FFFFFF;
+  --line:#D5E2E5;
+  --muted:#5B6C78;
+  --ok:#2E9E5B; --warn:#D99A00; --bad:#D64545; --deliver:#E58A2B;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;padding:20px 24px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
+header h1{font-size:30px;font-weight:800;letter-spacing:-.5px}
+header h1 span{color:var(--accent)}
+header p{margin:2px 0 0;color:var(--muted);max-width:62ch}
+.badge{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--paper)}
+main{display:grid;grid-template-columns:300px minmax(0,1fr) 420px;gap:16px;padding:16px 24px 32px;align-items:start}
+@media (max-width:1250px){main{grid-template-columns:300px minmax(0,1fr)}#calc{grid-column:1 / -1}}
+@media (max-width:820px){main{grid-template-columns:1fr;padding:12px 16px}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.panel h2{font-size:17px;font-weight:600;margin-bottom:10px}
+.panel + .panel{margin-top:14px}
+fieldset{border:0;padding:0;margin:0 0 12px}
+legend{font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;padding:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+input[type=number],input[type=text],select{width:100%;margin-top:3px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit;color:var(--ink);background:var(--surface);font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:1px}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.modes button,.btn{font:inherit;font-size:13px;font-weight:500;padding:8px 6px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.modes button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+#stage{min-width:0}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+@media (max-width:620px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;border-top:0}
+.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-family:var(--display);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+.tile .s{font-size:12.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff}
+.pill.ok{background:var(--ok)}.pill.warn{background:var(--warn)}.pill.bad{background:var(--bad)}
+.canvas-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+canvas{display:block;width:100%;height:auto;border-radius:6px;touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#calc h3{font-size:15px;font-weight:600;margin:14px 0 6px;display:flex;gap:8px;align-items:baseline}
+#calc h3 b{font-family:var(--mono);font-size:12px;color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px}
+.eq{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow-x:auto;white-space:pre;line-height:1.6}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td.num,th.num{text-align:right}
+.tablewrap{overflow-x:auto}
+footer{padding:0 24px 28px;color:var(--muted);font-size:12.5px}
+footer a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Conecta<span>Pyme</span></h1>
+    <p>Planifica el Wi‑Fi de tu local: dibuja el plano, marca las zonas importantes y la aplicación calcula dónde poner el router, qué zonas tendrán señal y cuánto cuesta.</p>
+  </div>
+  <span class="badge">Modelo UIT‑R P.1238 · umbral −67 dBm</span>
+</header>
+
+<main>
+  <section aria-label="Datos del local">
+    <div class="panel">
+      <h2>1. Datos del local</h2>
+      <fieldset>
+        <legend>Medidas (metros)</legend>
+        <div class="row">
+          <label for="largo">Largo<input id="largo" type="number" min="3" max="40" step="0.5" value="24"></label>
+          <label for="ancho">Ancho<input id="ancho" type="number" min="3" max="40" step="0.5" value="14"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Señal</legend>
+        <label for="ambiente">Tipo de local (coeficiente N)
+          <select id="ambiente">
+            <option value="22">Comercial abierto (N = 22)</option>
+            <option value="28">Residencial / local pequeño (N = 28)</option>
+            <option value="30" selected>Oficina con divisiones (N = 30)</option>
+          </select>
+        </label>
+        <div class="row">
+          <label for="pt">Potencia router (dBm)<input id="pt" type="number" min="10" max="30" step="1" value="20"></label>
+          <label for="frec">Frecuencia
+            <select id="frec"><option value="2400" selected>2,4 GHz</option><option value="5200">5 GHz</option></select>
+          </label>
+        </div>
+        <label for="umbral">Señal mínima requerida (dBm)<input id="umbral" type="number" min="-90" max="-50" step="1" value="-67"></label>
+      </fieldset>
+    </div>
+
+    <div class="panel">
+      <h2>2. Dibuja en el plano</h2>
+      <div class="modes" role="group" aria-label="Modo de dibujo">
+        <button type="button" id="m-zona" aria-pressed="true">Zona clave</button>
+        <button type="button" id="m-muro" aria-pressed="false">Muro</button>
+        <button type="button" id="m-borrar" aria-pressed="false">Borrar</button>
+      </div>
+      <label for="nombreZona">Nombre de la próxima zona<input id="nombreZona" type="text" value="Caja 2"></label>
+      <label for="material">Material del próximo muro
+        <select id="material">
+          <option value="3">Tabique / volcanita (3 dB)</option>
+          <option value="2">Vidrio (2 dB)</option>
+          <option value="6" selected>Ladrillo (6 dB)</option>
+          <option value="12">Hormigón (12 dB)</option>
+        </select>
+      </label>
+      <p class="hint" id="modoHint">Toca el plano para agregar una zona donde se necesita internet (caja, bodega, mesas).</p>
+      <div class="btns" style="margin-top:10px">
+        <button type="button" class="btn" id="ejemplo">Cargar ejemplo</button>
+        <button type="button" class="btn" id="limpiar">Limpiar plano</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>3. Precios (CLP)</h2>
+      <label for="pAP">Punto de acceso / router<input id="pAP" type="number" min="0" step="1000" value="45000"></label>
+      <label for="pSW">Switch (si hay más de un router)<input id="pSW" type="number" min="0" step="1000" value="15000"></label>
+      <label for="pIN">Cableado e instalación por router<input id="pIN" type="number" min="0" step="1000" value="30000"></label>
+      <p class="hint">Precios referenciales: cámbienlos por cotizaciones reales.</p>
+    </div>
+  </section>
+
+  <section id="stage" aria-label="Plano y resultados">
+    <div class="tiles">
+      <div class="tile"><div class="k">Routers</div><div class="v" id="tRouters">1</div><div class="s" id="tRoutersS"></div></div>
+      <div class="tile"><div class="k">Cobertura del local</div><div class="v" id="tCob">0 %</div><div class="s" id="tCobS"></div></div>
+      <div class="tile"><div class="k">Zona más débil</div><div class="v" id="tPeor">—</div><div class="s" id="tPeorS"></div></div>
+      <div class="tile"><div class="k">Costo total</div><div class="v" id="tCosto">$0</div><div class="s">Σ pᵢ·qᵢ</div></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="plano" width="900" height="600" aria-label="Plano del local con mapa de cobertura"></canvas>
+      <div class="legend">
+        <span><i style="background:#2E9E5B"></i>Buena (≥ umbral)</span>
+        <span><i style="background:#D99A00"></i>Regular (hasta 8 dB bajo el umbral)</span>
+        <span><i style="background:#D64545"></i>Sin cobertura</span>
+        <span><i style="background:#0B3C49;border-radius:50%"></i>Router óptimo</span>
+        <span><i style="background:#fff;border:2px solid #0B3C49;border-radius:50%"></i>Zona clave</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="calc" class="panel" aria-label="Cálculo paso a paso">
+    <h2>Cálculo paso a paso</h2>
+    <h3><b>1</b> Ubicación óptima: máximos y mínimos</h3>
+    <div class="eq" id="eqOpt"></div>
+    <p class="note" id="noteOpt"></p>
+    <h3><b>2</b> Distancia (vector) y señal en cada zona</h3>
+    <div class="eq" id="eqModelo"></div>
+    <div class="tablewrap"><table id="tablaZonas"><thead><tr><th>Zona</th><th class="num">d (m)</th><th class="num">Muros</th><th class="num">Pr (dBm)</th><th class="num">Pr′(d)</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
+    <p class="note">Pr′(d) = −N / (d · ln 10): cuántos dB se pierden por cada metro extra de distancia en esa zona.</p>
+    <h3><b>3</b> Presupuesto (producto punto)</h3>
+    <div class="eq" id="eqCosto"></div>
+  </section>
+</main>
+
+<footer>
+  Modelo de pérdida en interiores: <a href="https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.1238-3-200304-S!!PDF-E.pdf">UIT‑R P.1238</a>. Umbral de −67 dBm para servicios en tiempo real: <a href="https://www3-realm.cisco.com/en/US/docs/solutions/Enterprise/Mobility/vowlan/41dg/vowlan_ch3.html">Cisco, Voice over WLAN Design Guide</a>. Pérdidas por muro: valores referenciales. Proyecto ABPro · INACAP · Gallardo, Alarcón, Alarcón, Avendaño.
+</footer>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('plano'), ctx = cv.getContext('2d');
+  const fmtCLP = n => '$' + Math.round(n).toLocaleString('es-CL');
+  const f1 = n => n.toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1});
+  const f2 = n => n.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  let zonas = [], muros = [], modo = 'zona';
+  let arrastre = null, routers = [];
+
+  function ejemplo(){
+    $('largo').value = 24; $('ancho').value = 14;
+    zonas = [
+      {n:'Caja', x:2, y:2},
+      {n:'Bodega', x:21.5, y:3},
+      {n:'Mesas', x:6, y:11},
+      {n:'Mesón', x:12, y:6},
+      {n:'Oficina', x:21, y:11.5}
+    ];
+    muros = [
+      {x1:17, y1:0, x2:17, y2:9, L:12},
+      {x1:0, y1:8.5, x2:9, y2:8.5, L:6},
+      {x1:17, y1:9, x2:24, y2:9, L:3}
+    ];
+    $('nombreZona').value = 'Zona ' + (zonas.length + 1);
+    calcular();
+  }
+
+  // ---- geometría ----
+  function cruza(ax,ay,bx,by,cx,cy,dx,dy){
+    const d = (bx-ax)*(dy-cy) - (by-ay)*(dx-cx);
+    if (Math.abs(d) < 1e-9) return false;
+    const t = ((cx-ax)*(dy-cy) - (cy-ay)*(dx-cx)) / d;
+    const u = ((cx-ax)*(by-ay) - (cy-ay)*(bx-ax)) / d;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+  }
+  function perdidaMuros(rx,ry,px,py){
+    let L = 0, n = 0;
+    for (const m of muros){ if (cruza(rx,ry,px,py,m.x1,m.y1,m.x2,m.y2)){ L += m.L; n++; } }
+    return {L, n};
+  }
+  function params(){
+    return {
+      N: +$('ambiente').value, Pt: +$('pt').value, f: +$('frec').value,
+      U: +$('umbral').value, W: Math.max(3, +$('largo').value || 12), H: Math.max(3, +$('ancho').value || 8)
+    };
+  }
+  // Pr(d) = Pt − [20·log10(f) + N·log10(d) + ΣL − 28]
+  function senal(p, r, x, y){
+    const d = Math.max(Math.hypot(x - r.x, y - r.y), 0.5);
+    const w = perdidaMuros(r.x, r.y, x, y);
+    const L = 20*Math.log10(p.f) + p.N*Math.log10(d) + w.L - 28;
+    return {Pr: p.Pt - L, d, muros: w.n, Lm: w.L};
+  }
+  function mejor(p, x, y){
+    let best = null;
+    for (const r of routers){ const s = senal(p, r, x, y); if (!best || s.Pr > best.Pr) best = {...s, r}; }
+    return best;
+  }
+
+  // ---- optimización: centroide = mínimo de f(x)=Σ(x−xi)² ----
+  function centroide(pts){
+    const m = pts.length;
+    return {x: pts.reduce((a,p)=>a+p.x,0)/m, y: pts.reduce((a,p)=>a+p.y,0)/m};
+  }
+  function kmedias(pts, k){
+    // inicio determinista: punto más lejano
+    let cs = [centroide(pts)];
+    if (k > 1){
+      cs = [pts.reduce((a,p)=> (Math.hypot(p.x-cs[0].x,p.y-cs[0].y) > Math.hypot(a.x-cs[0].x,a.y-cs[0].y) ? p : a), pts[0])];
+      while (cs.length < k){
+        let far = pts[0], fd = -1;
+        for (const p of pts){ const d = Math.min(...cs.map(c=>Math.hypot(p.x-c.x,p.y-c.y))); if (d > fd){ fd = d; far = p; } }
+        cs.push({x:far.x, y:far.y});
+      }
+    }
+    let grupos = [];
+    for (let it = 0; it < 30; it++){
+      grupos = cs.map(()=>[]);
+      for (const p of pts){
+        let bi = 0, bd = Infinity;
+        cs.forEach((c,i)=>{ const d = Math.hypot(p.x-c.x,p.y-c.y); if (d < bd){ bd = d; bi = i; } });
+        grupos[bi].push(p);
+      }
+      cs = grupos.map((g,i)=> g.length ? centroide(g) : cs[i]);
+    }
+    return cs.map((c,i)=>({...c, grupo: grupos[i]}));
+  }
+  function grilla(p, paso){
+    const pts = [];
+    for (let x = paso/2; x < p.W; x += paso) for (let y = paso/2; y < p.H; y += paso) pts.push({x,y});
+    return pts;
+  }
+  function cobertura(p, pts){
+    let ok = 0;
+    for (const q of pts){ if (mejor(p, q.x, q.y).Pr >= p.U) ok++; }
+    return ok / pts.length;
+  }
+
+  function calcular(){
+    const p = params();
+    zonas = zonas.filter(z => z.x <= p.W && z.y <= p.H);
+    muros = muros.filter(m => Math.max(m.x1,m.x2) <= p.W + 0.01 && Math.max(m.y1,m.y2) <= p.H + 0.01);
+    const celdas = grilla(p, 0.5);
+    const base = zonas.length ? zonas : [{x:p.W/2, y:p.H/2, n:'Centro'}];
+    let elegido = null;
+    for (let k = 1; k <= 4; k++){
+      const fuente = (base.length >= k) ? base : celdas;
+      routers = kmedias(fuente, k);
+      const zonasOk = zonas.every(z => mejor(p, z.x, z.y).Pr >= p.U);
+      const cob = cobertura(p, celdas);
+      elegido = {k, cob, zonasOk};
+      if (zonasOk && cob >= 0.9) break;
+    }
+    dibujar(p);
+    resultados(p, elegido);
+  }
+
+  // ---- dibujo ----
+  let escala = 1, ox = 0, oy = 0;
+  function dibujar(p){
+    const cw = cv.clientWidth || 900;
+    const dpr = window.devicePixelRatio || 1;
+    const pad = 34;
+    escala = Math.min((cw - 2*pad) / p.W, 520 / p.H);
+    const ch = Math.round(p.H*escala + 2*pad);
+    cv.width = Math.round(cw*dpr); cv.height = Math.round(ch*dpr);
+    cv.style.height = ch + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ox = (cw - p.W*escala)/2; oy = pad;
+    ctx.clearRect(0,0,cw,ch);
+    ctx.fillStyle = '#F3F7F8'; ctx.fillRect(0,0,cw,ch);
+
+    // mapa de calor (recortado al local)
+    ctx.save(); ctx.beginPath(); ctx.rect(ox, oy, p.W*escala, p.H*escala); ctx.clip();
+    const paso = Math.max(0.1, Math.min(0.25, p.W/120));
+    for (let x = 0; x < p.W; x += paso){
+      for (let y = 0; y < p.H; y += paso){
+        const s = mejor(p, x + paso/2, y + paso/2).Pr;
+        ctx.fillStyle = s >= p.U ? 'rgba(46,158,91,.55)' : s >= p.U - 8 ? 'rgba(217,154,0,.55)' : 'rgba(214,69,69,.5)';
+        ctx.fillRect(ox + x*escala, oy + y*escala, paso*escala + 1, paso*escala + 1);
+      }
+    }
+    ctx.restore();
+    // cuadrícula de 1 m
+    ctx.strokeStyle = 'rgba(11,60,73,.12)'; ctx.lineWidth = 1;
+    for (let x = 0; x <= p.W; x++){ ctx.beginPath(); ctx.moveTo(ox+x*escala, oy); ctx.lineTo(ox+x*escala, oy+p.H*escala); ctx.stroke(); }
+    for (let y = 0; y <= p.H; y++){ ctx.beginPath(); ctx.moveTo(ox, oy+y*escala); ctx.lineTo(ox+p.W*escala, oy+y*escala); ctx.stroke(); }
+    // borde
+    ctx.strokeStyle = '#0B3C49'; ctx.lineWidth = 3; ctx.strokeRect(ox, oy, p.W*escala, p.H*escala);
+    // ejes
+    ctx.fillStyle = '#5B6C78'; ctx.font = '12px "IBM Plex Mono", monospace'; ctx.textAlign = 'center';
+    ctx.fillText(p.W + ' m', ox + p.W*escala/2, oy - 12);
+    ctx.save(); ctx.translate(ox - 14, oy + p.H*escala/2); ctx.rotate(-Math.PI/2); ctx.fillText(p.H + ' m', 0, 0); ctx.restore();
+    // muros
+    for (const m of muros){
+      ctx.strokeStyle = m.L >= 12 ? '#2b2b2b' : m.L >= 6 ? '#7a4a2a' : m.L >= 3 ? '#8a8f94' : '#6fb7d6';
+      ctx.lineWidth = m.L >= 12 ? 8 : m.L >= 6 ? 6 : 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(ox+m.x1*escala, oy+m.y1*escala); ctx.lineTo(ox+m.x2*escala, oy+m.y2*escala); ctx.stroke();
+    }
+    if (arrastre){
+      ctx.setLineDash([6,6]); ctx.strokeStyle = '#0B3C49'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(ox+arrastre.x1*escala, oy+arrastre.y1*escala); ctx.lineTo(ox+arrastre.x2*escala, oy+arrastre.y2*escala); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // líneas router-zona
+    for (const z of zonas){
+      const b = mejor(p, z.x, z.y);
+      ctx.strokeStyle = 'rgba(11,60,73,.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(ox+b.r.x*escala, oy+b.r.y*escala); ctx.lineTo(ox+z.x*escala, oy+z.y*escala); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // zonas y routers con etiquetas que no se tapan
+    const cajas = [];
+    const choca = (b) => cajas.some(c => b.x < c.x + c.w && b.x + b.w > c.x && b.y < c.y + c.h && b.y + b.h > c.y);
+    const dentro = (b) => b.x >= ox - 30 && b.x + b.w <= ox + p.W*escala + 30 && b.y >= 2 && b.y + b.h <= oy + p.H*escala + 30;
+    // reservar círculos de zonas y routers
+    for (const z of zonas){ const zx = ox+z.x*escala, zy = oy+z.y*escala; cajas.push({x:zx-10,y:zy-10,w:20,h:20}); }
+    for (const r of routers){ const rx = ox+r.x*escala, ry = oy+r.y*escala; cajas.push({x:rx-15,y:ry-15,w:30,h:30}); }
+    function ubicar(cx, cy, w, h, rad){
+      const ops = [
+        {x: cx + rad + 4, y: cy - h/2}, {x: cx - w/2, y: cy - rad - h - 4},
+        {x: cx - w/2, y: cy + rad + 4}, {x: cx - rad - w - 4, y: cy - h/2},
+        {x: cx + rad + 4, y: cy - h - 6}, {x: cx + rad + 4, y: cy + 6},
+        {x: cx - rad - w - 4, y: cy - h - 6}, {x: cx - rad - w - 4, y: cy + 6}
+      ];
+      for (const o of ops){ const b = {x:o.x, y:o.y, w, h}; if (dentro(b) && !choca(b)){ cajas.push(b); return b; } }
+      const b = {x:ops[0].x, y:ops[0].y, w, h}; cajas.push(b); return b;
+    }
+    // dibujar círculos de zonas
+    for (const z of zonas){
+      const zx = ox+z.x*escala, zy = oy+z.y*escala;
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#0B3C49'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(zx, zy, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+    // dibujar routers
+    for (const r of routers){
+      const rx = ox+r.x*escala, ry = oy+r.y*escala;
+      ctx.fillStyle = '#0B3C49'; ctx.beginPath(); ctx.arc(rx, ry, 13, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      for (let a = 1; a <= 2; a++){ ctx.beginPath(); ctx.arc(rx, ry + 4, 3.5*a, Math.PI*1.25, Math.PI*1.75); ctx.stroke(); }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(rx, ry + 4, 1.8, 0, Math.PI*2); ctx.fill();
+    }
+    // etiquetas de routers primero (las más importantes)
+    ctx.font = '600 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+    routers.forEach((r,i)=>{
+      const rx = ox+r.x*escala, ry = oy+r.y*escala;
+      const t = 'R' + (i+1) + ' (' + f1(r.x) + '; ' + f1(r.y) + ')';
+      const w = ctx.measureText(t).width + 10, h = 20;
+      const b = ubicar(rx, ry, w, h, 14);
+      ctx.fillStyle = '#0B3C49'; ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = '#fff'; ctx.fillText(t, b.x + 5, b.y + 14);
+    });
+    // etiquetas de zonas
+    ctx.font = '600 13px "IBM Plex Sans", sans-serif';
+    for (const z of zonas){
+      const zx = ox+z.x*escala, zy = oy+z.y*escala;
+      const w = ctx.measureText(z.n).width + 10, h = 20;
+      const b = ubicar(zx, zy, w, h, 9);
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = '#0B3C49'; ctx.fillText(z.n, b.x + 5, b.y + 14);
+    }
+  }
+
+  // ---- resultados ----
+  function resultados(p, e){
+    const k = routers.length;
+    $('tRouters').textContent = k;
+    $('tRoutersS').textContent = k === 1 ? 'Un punto de acceso basta' : 'Se necesitan ' + k + ' puntos de acceso';
+    const pct = Math.round(e.cob*100);
+    $('tCob').textContent = pct + ' %';
+    $('tCobS').innerHTML = pct >= 90 ? '<span class="pill ok">Buena</span>' : pct >= 75 ? '<span class="pill warn">Mejorable</span>' : '<span class="pill bad">Insuficiente</span>';
+    // peor zona
+    const filas = zonas.map(z => ({z, s: mejor(p, z.x, z.y)}));
+    if (filas.length){
+      const peor = filas.reduce((a,b)=> b.s.Pr < a.s.Pr ? b : a);
+      $('tPeor').textContent = f1(peor.s.Pr) + ' dBm';
+      $('tPeorS').innerHTML = peor.z.n + ' ' + (peor.s.Pr >= p.U ? '<span class="pill ok">OK</span>' : '<span class="pill bad">Bajo el umbral</span>');
+    } else { $('tPeor').textContent = '—'; $('tPeorS').textContent = 'Agrega zonas clave'; }
+
+    // paso 1: optimización
+    const ln = [];
+    routers.forEach((r,i)=>{
+      const g = (r.grupo && r.grupo.length && zonas.length) ? r.grupo : null;
+      if (!g){ ln.push('R' + (i+1) + ': sin zonas asignadas → centro del área (' + f2(r.x) + '; ' + f2(r.y) + ')'); return; }
+      const m = g.length, sx = g.reduce((a,q)=>a+q.x,0), sy = g.reduce((a,q)=>a+q.y,0);
+      const xs = g.map(q=>f1(q.x)).join(', '), ys = g.map(q=>f1(q.y)).join(', ');
+      ln.push((k>1 ? 'Router R' + (i+1) + ' — zonas: ' + g.map(q=>q.n).join(', ') + '\n' : '') +
+        'f(x) = Σ (x − xᵢ)²        con xᵢ = ' + xs + '\n' +
+        "f′(x) = 2·Σ (x − xᵢ) = 2(" + m + "x − " + f1(sx) + ") = 0\n" +
+        '  ⇒ x = ' + f1(sx) + ' / ' + m + ' = ' + f2(sx/m) + ' m\n' +
+        "f″(x) = 2·" + m + " = " + (2*m) + " > 0  ⇒ MÍNIMO\n" +
+        'Igual en y (yᵢ = ' + ys + '):  y = ' + f1(sy) + ' / ' + m + ' = ' + f2(sy/m) + ' m');
+    });
+    $('eqOpt').textContent = ln.join('\n\n');
+    $('noteOpt').textContent = 'El router va en el punto que minimiza la suma de distancias al cuadrado a las zonas clave: así la señal es máxima donde más se necesita.' + (k > 1 ? ' Con ' + k + ' routers, cada uno se optimiza con las zonas que tiene más cerca.' : '');
+
+    // paso 2: modelo
+    const L0 = 20*Math.log10(p.f) - 28;
+    $('eqModelo').textContent =
+      'd = ‖P − R‖ = √((x₂ − x₁)² + (y₂ − y₁)²)\n' +
+      'L(d) = 20·log₁₀(' + p.f + ') + ' + p.N + '·log₁₀(d) + ΣL_muros − 28\n' +
+      '     = ' + f1(L0) + ' + ' + p.N + '·log₁₀(d) + ΣL_muros   [dB]\n' +
+      'Pr(d) = ' + p.Pt + ' − L(d)   ·   cubierta si Pr ≥ ' + p.U + ' dBm';
+    const tb = $('tablaZonas').querySelector('tbody'); tb.innerHTML = '';
+    for (const {z, s} of filas){
+      const der = -p.N / (s.d * Math.LN10);
+      const est = s.Pr >= p.U ? '<span class="pill ok">Buena</span>' : s.Pr >= p.U - 8 ? '<span class="pill warn">Regular</span>' : '<span class="pill bad">Sin señal</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + z.n.replace(/</g,'&lt;') + '</td><td class="num">' + f2(s.d) + '</td><td class="num">' + s.muros + (s.Lm ? ' (' + s.Lm + ' dB)' : '') + '</td><td class="num">' + f1(s.Pr) + '</td><td class="num">' + f2(der) + ' dB/m</td><td>' + est + '</td>';
+      tb.appendChild(tr);
+    }
+    if (!filas.length){ tb.innerHTML = '<tr><td colspan="6">Toca el plano para agregar zonas clave.</td></tr>'; }
+
+    // paso 3: costo
+    const pr = [+$('pAP').value||0, +$('pSW').value||0, +$('pIN').value||0];
+    const q = [k, k > 1 ? 1 : 0, k];
+    const tot = pr[0]*q[0] + pr[1]*q[1] + pr[2]*q[2];
+    $('eqCosto').textContent =
+      'p = (' + pr.map(fmtCLP).join(', ') + ')   router, switch, instalación\n' +
+      'q = (' + q.join(', ') + ')\n' +
+      'Costo = p · q = ' + pr.map((v,i)=>fmtCLP(v) + '·' + q[i]).join(' + ') + '\n' +
+      '      = ' + fmtCLP(tot);
+    $('tCosto').textContent = fmtCLP(tot);
+  }
+
+  // ---- interacción ----
+  function aMetros(ev){
+    const rect = cv.getBoundingClientRect();
+    const p = params();
+    const x = (ev.clientX - rect.left - ox) / escala, y = (ev.clientY - rect.top - oy) / escala;
+    return {x: Math.min(Math.max(x,0),p.W), y: Math.min(Math.max(y,0),p.H), dentro: x >= 0 && y >= 0 && x <= p.W && y <= p.H};
+  }
+  function distSeg(px,py,m){
+    const dx = m.x2-m.x1, dy = m.y2-m.y1, l2 = dx*dx + dy*dy || 1;
+    const t = Math.max(0, Math.min(1, ((px-m.x1)*dx + (py-m.y1)*dy)/l2));
+    return Math.hypot(px-(m.x1+t*dx), py-(m.y1+t*dy));
+  }
+  cv.addEventListener('pointerdown', ev => {
+    const q = aMetros(ev); if (!q.dentro) return;
+    const r = (x)=>Math.round(x*2)/2;
+    if (modo === 'zona'){
+      const n = $('nombreZona').value.trim() || ('Zona ' + (zonas.length+1));
+      zonas.push({n, x:r(q.x), y:r(q.y)});
+      $('nombreZona').value = 'Zona ' + (zonas.length + 1);
+      calcular();
+    } else if (modo === 'muro'){
+      arrastre = {x1:r(q.x), y1:r(q.y), x2:r(q.x), y2:r(q.y)};
+      cv.setPointerCapture(ev.pointerId);
+    } else {
+      const tol = 0.6;
+      const iz = zonas.findIndex(z => Math.hypot(z.x-q.x, z.y-q.y) < tol);
+      if (iz >= 0){ zonas.splice(iz,1); calcular(); return; }
+      const im = muros.findIndex(m => distSeg(q.x,q.y,m) < tol*0.6);
+      if (im >= 0){ muros.splice(im,1); calcular(); }
+    }
+  });
+  cv.addEventListener('pointermove', ev => {
+    if (!arrastre) return;
+    const q = aMetros(ev), r = (x)=>Math.round(x*2)/2;
+    arrastre.x2 = r(q.x); arrastre.y2 = r(q.y);
+    dibujar(params());
+  });
+  cv.addEventListener('pointerup', () => {
+    if (!arrastre) return;
+    if (Math.hypot(arrastre.x2-arrastre.x1, arrastre.y2-arrastre.y1) >= 0.5){
+      muros.push({...arrastre, L: +$('material').value});
+    }
+    arrastre = null; calcular();
+  });
+
+  const hints = {
+    zona: 'Toca el plano para agregar una zona donde se necesita internet (caja, bodega, mesas).',
+    muro: 'Arrastra sobre el plano para dibujar un muro del material elegido.',
+    borrar: 'Toca una zona o un muro para borrarlo.'
+  };
+  ['zona','muro','borrar'].forEach(m => {
+    $('m-' + m).addEventListener('click', () => {
+      modo = m;
+      ['zona','muro','borrar'].forEach(o => $('m-' + o).setAttribute('aria-pressed', String(o === m)));
+      $('modoHint').textContent = hints[m];
+    });
+  });
+  ['largo','ancho','ambiente','pt','frec','umbral','pAP','pSW','pIN'].forEach(id => $(id).addEventListener('input', calcular));
+  $('ejemplo').addEventListener('click', ejemplo);
+  $('limpiar').addEventListener('click', () => { zonas = []; muros = []; $('nombreZona').value = 'Caja'; calcular(); });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(calcular, 120); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(calcular);
+  ejemplo();
+})();
+</script>
+</body>
+</html>
